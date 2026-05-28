@@ -179,11 +179,10 @@ export default function TitlePage() {
       >
         {/* マスコット */}
         <motion.div
-          className="text-8xl"
           animate={{ y: [-8, 8, -8], rotate: [-5, 5, -5] }}
           transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
         >
-          🐣
+          <img src="/2_dragonfly.png" alt="マスコット" className="w-24 h-24 object-contain" />
         </motion.div>
 
         {/* タイトル */}

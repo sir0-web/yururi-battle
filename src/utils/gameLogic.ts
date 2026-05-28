@@ -352,13 +352,35 @@ export function bestMove(difficulty: string, pieces: Record<Player, Piece[]>, bo
   }
 
   // むずかしい：minimax 3手先読み
+  // アモン・ラー：minimax 5手先読み + 相手の全勝ち筋を潰す
+  const depth = difficulty === 'amon' ? 5 : 3;
+
+  if (difficulty === 'amon') {
+    // 相手の2手先の脅威も全部潰す
+    const p1Moves = getAvailMoves('p1', pieces, board);
+    for (const pm of p1Moves) {
+      const nb = board.map(s => [...s.map(p => ({...p}))]);
+      nb[pm.ci].push({ player: 'p1', sz: pm.sz });
+      const np = { ...pieces, p1: pieces.p1.map((p,i) => i===pm.pi ? {...p,used:true} : p) };
+      // p1がこの手を打った後にさらに勝ち筋ができるか
+      const p1Next = getAvailMoves('p1', np, nb);
+      for (const pm2 of p1Next) {
+        if (simWin('p1', pm2, nb)) {
+          // p1の1手目を潰す
+          const block = avail.find(m => m.ci === pm.ci);
+          if (block) return block;
+        }
+      }
+    }
+  }
+
   let bestMv = avail[0];
   let bestScore = -Infinity;
   for (const mv of avail) {
     const nb = board.map(s => [...s.map(p => ({...p}))]);
     nb[mv.ci].push({ player: 'p2', sz: mv.sz });
     const np = { ...pieces, p2: pieces.p2.map((p,i) => i===mv.pi ? {...p,used:true} : p) };
-    const score = minimax(nb, np, 3, false, -Infinity, Infinity);
+    const score = minimax(nb, np, depth, false, -Infinity, Infinity);
     if (score > bestScore) { bestScore = score; bestMv = mv; }
   }
   return bestMv;

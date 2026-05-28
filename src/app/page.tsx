@@ -24,7 +24,7 @@ export default function TitlePage() {
     const interval = setInterval(fetchWaiting, 5000);
     return () => clearInterval(interval);
   }, []);
-  const [diff, setDiff] = useState<'easy' | 'normal' | 'hard'>('normal');
+  const [diff, setDiff] = useState<'easy' | 'normal' | 'hard' | 'amon'>('hard');
   const [showHowto, setShowHowto] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -86,18 +86,25 @@ export default function TitlePage() {
         <div className="bg-white rounded-2xl p-4 shadow-md">
           <h3 className="font-black text-sm text-teal-600 mb-3 border-b-2 border-dashed border-amber-200 pb-2">🤖 CPU難易度</h3>
           <div className="flex gap-2">
-            {(['easy','normal','hard'] as const).map((d, i) => (
-              <motion.button
-                key={d}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onPointerDown={() => setDiff(d)}
-                className={`flex-1 py-2 rounded-full font-black text-sm transition-all border-2
-                  ${diff === d ? 'bg-teal-400 text-white border-teal-400 shadow-[0_3px_0_#1A9991]' : 'bg-white text-gray-500 border-amber-200'}`}
-              >
-                {['やさしい','ふつう','むずかしい'][i]}
-              </motion.button>
-            ))}
+            <div className="flex gap-2 flex-wrap">
+              {(['easy','normal','hard','amon'] as const).map((d, i) => (
+                <motion.button
+                  key={d}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onPointerDown={() => setDiff(d)}
+                  className={`flex-1 py-2 rounded-full font-black text-sm transition-all border-2
+                    ${diff === d
+                      ? d === 'amon'
+                        ? 'bg-gradient-to-r from-yellow-500 to-orange-600 text-white border-orange-600 shadow-[0_3px_0_#92400E]'
+                        : 'bg-teal-400 text-white border-teal-400 shadow-[0_3px_0_#1A9991]'
+                      : 'bg-white text-gray-500 border-amber-200'
+                    }`}
+                >
+                  {['やさしい','ふつう','むずかしい','🌞アモン・ラー'][i]}
+                </motion.button>
+              ))}
+            </div>
           </div>
         </div>
         <div className="bg-white rounded-2xl p-4 shadow-md">

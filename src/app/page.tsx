@@ -1,7 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Attribute, ATTRIBUTE_INFO } from '@/types/game';
 
@@ -9,6 +10,20 @@ const FLOATING_EMOJIS = ['🎮','⚡','🔥','💧','🌟','🌑','🎲','✨','
 
 export default function TitlePage() {
   const router = useRouter();
+  const [waitingCount, setWaitingCount] = useState(0);
+
+  useEffect(() => {
+    const fetchWaiting = async () => {
+      const { count } = await supabase
+        .from('rooms')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'waiting');
+      setWaitingCount(count ?? 0);
+    };
+    fetchWaiting();
+    const interval = setInterval(fetchWaiting, 5000);
+    return () => clearInterval(interval);
+  }, []);
   const [diff, setDiff] = useState<'easy' | 'normal' | 'hard'>('normal');
   const [showHowto, setShowHowto] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -203,8 +218,9 @@ export default function TitlePage() {
         {/* ボタン */}
         <div className="flex flex-col gap-3 w-full">
           {[
-            { label: '👥 2人でプレイ', style: 'from-red-400 to-orange-400', shadow: '#CC3300', onClick: () => router.push('/game?mode=local'), delay: 0.2 },
-            { label: '🤖 CPU対戦',     style: 'from-teal-400 to-cyan-400',  shadow: '#1A9991', onClick: () => router.push(`/game?mode=cpu&diff=${diff}`), delay: 0.28 },
+           { label: '👥 2人でプレイ', style: 'from-red-400 to-orange-400', shadow: '#CC3300', onClick: () => router.push('/game?mode=local'), delay: 0.2 },
+{ label: '🤖 CPU対戦', style: 'from-teal-400 to-cyan-400', shadow: '#1A9991', onClick: () => router.push(`/game?mode=cpu&diff=${diff}`), delay: 0.28 },
+{ label: '🌐 オンライン対戦', style: 'from-purple-400 to-indigo-400', shadow: '#4338CA', onClick: () => router.push('/online'), delay: 0.36 },
           ].map((btn, i) => (
             <motion.button
               key={i}
@@ -217,13 +233,23 @@ export default function TitlePage() {
               className={`bg-gradient-to-r ${btn.style} text-white font-black text-lg py-4 rounded-full`}
               style={{ boxShadow: `0 6px 0 ${btn.shadow}, 0 8px 20px ${btn.shadow}55` }}
             >
-              {btn.label}
+{btn.label}
             </motion.button>
           ))}
 
+          {waitingCount > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center text-xs font-black text-purple-400 -mt-2"
+            >
+              🔍 対戦相手 {waitingCount}人 待機中！
+            </motion.div>
+          )}
+
           {[
-            { label: '📖 遊び方', onClick: () => setShowHowto(true), delay: 0.36 },
-            { label: '⚙️ 設定',   onClick: () => setShowSettings(true), delay: 0.42 },
+            { label: '📖 遊び方', onClick: () => setShowHowto(true), delay: 0.44 },
+            { label: '⚙️ 設定',   onClick: () => setShowSettings(true), delay: 0.50 },
           ].map((btn, i) => (
             <motion.button
               key={i}

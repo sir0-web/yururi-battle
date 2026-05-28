@@ -1,12 +1,14 @@
 'use client';
 
-import { Suspense, useEffect, useRef } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { GameMode } from '@/types/game';
+import { Attribute, GameMode, ATTRIBUTE_INFO } from '@/types/game';
 import { useGameState } from '@/hooks/useGameState';
 import Board from '@/components/game/Board';
 import PlayerPanel from '@/components/game/PlayerPanel';
 import ResultOverlay from '@/components/game/ResultOverlay';
+import AttributeSelect from '@/components/game/AttributeSelect';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function GamePageInner() {
   const router = useRouter();
@@ -14,17 +16,23 @@ function GamePageInner() {
   const mode = (params.get('mode') ?? 'local') as GameMode;
   const diff = params.get('diff') ?? 'normal';
 
+  const [phase, setPhase] = useState<'attr-p1' | 'attr-p2' | 'game'>('attr-p1');
+  const [p1Attr, setP1Attr] = useState<Attribute>('none');
+  const [p2Attr, setP2Attr] = useState<Attribute>('none');
+
   const { game, sel, busy, moves, reset, selectPiece, placePiece, triggerCpu, canPlaceCheck } = useGameState(mode, diff);
-  const prevCur = useRef(game.cur);
 
   useEffect(() => {
-    if (prevCur.current !== game.cur) {
-      prevCur.current = game.cur;
-    }
     if (!game.winner && !game.draw && mode === 'cpu' && game.cur === 'p2') {
       triggerCpu(game);
     }
   }, [game.cur, game.winner, game.draw]);
+
+  const startGame = () => {
+    const attrs = { p1: p1Attr, p2: mode === 'cpu' ? (['fire','water','thunder','dark','light'] as Attribute[])[Math.floor(Math.random()*5)] : p2Attr };
+    reset(attrs);
+    setPhase('game');
+  };
 
   const onCell = (ci: number) => {
     if (!sel || busy || game.winner || game.draw) return;
@@ -40,14 +48,41 @@ function GamePageInner() {
   let msg = 'コマを選んでね！';
   if (game.winner || game.draw) msg = '結果を確認！';
   else if (isCpuTurn) msg = 'CPUが考えています…';
+  else if (game.extraTurn) msg = '⚡ もう1手！';
   else if (sel) msg = `「${sel.sz === 'L' ? '大' : sel.sz === 'M' ? '中' : '小'}」を置く場所を選んでね！`;
+
+  // 属性選択フェーズ
+  if (phase === 'attr-p1') {
+    return (
+      <AttributeSelect
+        player="p1"
+        selected={p1Attr}
+        onSelect={setP1Attr}
+        onConfirm={() => mode === 'local' ? setPhase('attr-p2') : startGame()}
+        isLocal={mode === 'local'}
+      />
+    );
+  }
+
+  if (phase === 'attr-p2' && mode === 'local') {
+    return (
+      <AttributeSelect
+        player="p2"
+        selected={p2Attr}
+        onSelect={setP2Attr}
+        onConfirm={startGame}
+        isLocal={true}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FFF9F0] flex flex-col">
       <div className="max-w-md w-full mx-auto px-3 py-3 flex flex-col gap-3">
 
+        {/* Header */}
         <div className="flex items-center justify-between gap-2">
-          <span className="font-black text-red-400 text-lg" style={{fontFamily:"'Fredoka One',cursive"}}>
+          <span className="font-black text-red-400 text-lg" style={{ fontFamily: "'Fredoka One',cursive" }}>
             🎮 バトル
           </span>
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full font-black text-sm ${turnColor}`}>
@@ -60,15 +95,70 @@ function GamePageInner() {
           >✕</button>
         </div>
 
+        {/* 属性バッジ */}
+        <div className="flex gap-2 justify-center">
+          {(['p1','p2'] as const).map(p => {
+            const attr = game.attributes[p];
+            const info = ATTRIBUTE_INFO[attr];
+            return (
+              <motion.div
+                key={p}
+                className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black text-white bg-gradient-to-r ${info.color}`}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 400 }}
+              >
+                {info.emoji} {p === 'p1' ? 'P1' : (mode === 'cpu' ? 'CPU' : 'P2')}:{info.label}
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* エフェクト通知 */}
+        <AnimatePresence>
+          {game.lastEffect?.type === 'explosion' && (
+            <motion.div
+              className="text-center text-sm font-black py-1.5 px-4 bg-orange-100 text-orange-600 rounded-full"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+            >
+              🔥 爆発！隣接コマにダメージ！
+            </motion.div>
+          )}
+          {game.lastEffect?.type === 'extra_turn' && (
+            <motion.div
+              className="text-center text-sm font-black py-1.5 px-4 bg-yellow-100 text-yellow-600 rounded-full"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+            >
+              ⚡ 雷の力！もう1手追加！
+            </motion.div>
+          )}
+          {game.lastEffect?.type === 'shield_break' && (
+            <motion.div
+              className="text-center text-sm font-black py-1.5 px-4 bg-lime-100 text-lime-600 rounded-full"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+            >
+              🌟 シールド破壊！
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* CPU thinking */}
         {isCpuTurn && !game.winner && !game.draw && (
           <div className="flex items-center gap-2 px-4 py-2 bg-teal-100 rounded-full w-fit text-teal-700 font-black text-xs">
             <span>CPU思考中</span>
-            {[0,1,2].map(i => (
-              <span key={i} className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-bounce" style={{animationDelay:`${i*0.15}s`}} />
+            {[0, 1, 2].map(i => (
+              <span key={i} className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
             ))}
           </div>
         )}
 
+        {/* Player panels */}
         <div className="grid grid-cols-2 gap-2">
           <PlayerPanel
             player="p1" name="プレイヤー1"
@@ -86,21 +176,27 @@ function GamePageInner() {
           />
         </div>
 
+        {/* Message */}
         <div className="text-center text-sm font-black py-2 px-4 bg-white rounded-full shadow-md min-h-9 flex items-center justify-center gap-1">
           <span>👆</span><span>{msg}</span>
         </div>
 
+        {/* Board */}
         <Board
-          board={game.board} sel={sel}
+          board={game.board}
+          sel={sel}
           winLine={game.winLine}
           canPlaceCheck={canPlaceCheck}
           onCell={onCell}
+          p1Attr={game.attributes.p1}
+          p2Attr={game.attributes.p2}
         />
 
+        {/* Footer */}
         <div className="flex items-center justify-between text-xs font-bold text-gray-400">
           <span>🔢 手数: {moves}</span>
           <button
-            onPointerDown={() => { if (confirm('リセットしますか？')) reset(); }}
+            onPointerDown={() => { if (confirm('リセットしますか？')) { setPhase('attr-p1'); setP1Attr('none'); setP2Attr('none'); } }}
             className="text-xs font-black px-3 py-1.5 rounded-full border-2 border-amber-200 bg-white shadow-[0_2px_0_#DCC89A] active:shadow-none active:translate-y-0.5 transition-all"
           >🔄 リセット</button>
         </div>
@@ -109,7 +205,7 @@ function GamePageInner() {
       {(game.winner || game.draw) && (
         <ResultOverlay
           winner={game.winner} draw={game.draw} mode={mode}
-          onRematch={reset}
+          onRematch={() => { setPhase('attr-p1'); setP1Attr('none'); setP2Attr('none'); }}
           onTitle={() => router.push('/')}
         />
       )}

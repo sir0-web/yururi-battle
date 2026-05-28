@@ -96,12 +96,15 @@ export default function GamePage() {
         </div>
 
         {/* Board */}
-        <Board
-          board={game.board} sel={sel}
-          winLine={game.winLine}
-          canPlaceCheck={canPlaceCheck}
-          onCell={onCell}
-        />
+<Board
+  board={game.board}
+  sel={sel}
+  winLine={game.winLine}
+  canPlaceCheck={canPlaceCheck}
+  onCell={onCell}
+  p1Attr={game.attributes.p1}
+  p2Attr={game.attributes.p2}
+/>
 
         {/* Footer */}
         <div className="flex items-center justify-between text-xs font-bold text-gray-400">

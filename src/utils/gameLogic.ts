@@ -74,7 +74,7 @@ export function applyPlace(
   cellIdx: number
 ): GameState {
   const piece = state.pieces[player][pieceIdx];
-  const attr = state.attributes[player];
+  const attr = 'none' as Attribute; // 属性システム一時OFF
   const newBoard = state.board.map(s => [...s.map(p => ({ ...p }))]);
   const stack = newBoard[cellIdx];
   const wasOverwrite = stack.length > 0;
@@ -202,37 +202,164 @@ function simWin(player: Player, mv: CpuMove, board: BoardPiece[][]): boolean {
   });
 }
 
+function canWinNext(player: Player, pieces: Record<Player, Piece[]>, board: BoardPiece[][]): boolean {
+  const moves = getAvailMoves(player, pieces, board);
+  for (const mv of moves) {
+    if (simWin(player, mv, board)) return true;
+  }
+  return false;
+}
+
 function simBlock(mv: CpuMove, pieces: Record<Player, Piece[]>, board: BoardPiece[][]): boolean {
-  const b = board.map(s => [...s]);
+  // このマスに置かないと相手が次のターンに勝てるか？
+  const b = board.map(s => [...s.map(p => ({...p}))]);
   b[mv.ci].push({ player: 'p2', sz: mv.sz });
-  return pieces.p1.some((p, pi) => {
-    if (p.used) return false;
-    for (let ci = 0; ci < 9; ci++) {
-      const s = b[ci];
-      if (!s.length || SZ_VAL[p.sz] > SZ_VAL[s[s.length - 1].sz]) {
-        const b2 = b.map(x => [...x]);
-        b2[ci].push({ player: 'p1', sz: p.sz });
-        if (WIN_LINES.some(l => {
-          const t = l.map(i => { const ss = b2[i]; return ss.length ? ss[ss.length - 1] : null; });
-          return t[0] && t[1] && t[2] && t[0].player === 'p1' && t[1].player === 'p1' && t[2].player === 'p1';
-        })) return true;
+  const np = { ...pieces, p2: pieces.p2.map((p,i) => i===mv.pi ? {...p,used:true} : p) };
+  // 置いた後に相手が勝てるか
+  return !canWinNext('p1', pieces, b);
+}
+
+function mustBlock(pieces: Record<Player, Piece[]>, board: BoardPiece[][]): CpuMove | null {
+  // p1が今すぐ勝てる手があるか探して、それを防ぐ
+  const p1Moves = getAvailMoves('p1', pieces, board);
+  for (const pm of p1Moves) {
+    if (simWin('p1', pm, board)) {
+      // p1が勝てるマスをp2が上書きできるか？
+      const p2Moves = getAvailMoves('p2', pieces, board);
+      for (const mv of p2Moves) {
+        if (mv.ci === pm.ci) return mv; // 同じマスに置いて阻止
       }
+      // 同じマスに置けない場合、他の手で阻止できないので最大サイズで別マスを探す
+      const blockMoves = p2Moves.filter(m => m.ci === pm.ci);
+      if (blockMoves.length) return blockMoves.sort((a,b) => SZ_VAL[b.sz] - SZ_VAL[a.sz])[0];
     }
-    return false;
-  });
+  }
+  return null;
+}
+
+function countThreats(player: Player, board: BoardPiece[][]): number {
+  let threats = 0;
+  for (const line of WIN_LINES) {
+    const tops = line.map(i => { const s = board[i]; return s.length ? s[s.length-1] : null; });
+    const mine = tops.filter(t => t?.player === player).length;
+    const empty = tops.filter(t => t === null).length;
+    if (mine === 2 && empty >= 1) threats++;
+  }
+  return threats;
+}
+
+function scoreBoard(board: BoardPiece[][], pieces: Record<Player, Piece[]>): number {
+  let score = 0;
+  const pri = [4, 0, 2, 6, 8, 1, 3, 5, 7];
+
+  // センター・コーナー制御
+  for (let ci = 0; ci < 9; ci++) {
+    const s = board[ci];
+    if (!s.length) continue;
+    const top = s[s.length - 1];
+    const posScore = pri.indexOf(ci) <= 1 ? 3 : pri.indexOf(ci) <= 4 ? 2 : 1;
+    if (top.player === 'p2') score += posScore + SZ_VAL[top.sz];
+    else score -= posScore + SZ_VAL[top.sz];
+  }
+
+  // 脅威カウント
+  score += countThreats('p2', board) * 10;
+  score -= countThreats('p1', board) * 12;
+
+  // コマ節約ボーナス
+  const p2Remaining = pieces.p2.filter(p => !p.used).length;
+  score += p2Remaining * 0.5;
+
+  return score;
+}
+
+function minimax(
+  board: BoardPiece[][],
+  pieces: Record<Player, Piece[]>,
+  depth: number,
+  isMax: boolean,
+  alpha: number,
+  beta: number
+): number {
+  const { winner } = checkWin(board);
+  if (winner === 'p2') return 1000 + depth;
+  if (winner === 'p1') return -1000 - depth;
+  if (checkDraw(pieces) || depth === 0) return scoreBoard(board, pieces);
+
+  const player: Player = isMax ? 'p2' : 'p1';
+  const moves = getAvailMoves(player, pieces, board);
+  if (!moves.length) return scoreBoard(board, pieces);
+
+  if (isMax) {
+    let best = -Infinity;
+    for (const mv of moves) {
+      const nb = board.map(s => [...s.map(p => ({...p}))]);
+      nb[mv.ci].push({ player, sz: mv.sz });
+      const np = {
+        p1: pieces.p1.map((p,i) => player==='p1'&&i===mv.pi ? {...p,used:true} : p),
+        p2: pieces.p2.map((p,i) => player==='p2'&&i===mv.pi ? {...p,used:true} : p),
+      };
+      best = Math.max(best, minimax(nb, np, depth-1, false, alpha, beta));
+      alpha = Math.max(alpha, best);
+      if (beta <= alpha) break;
+    }
+    return best;
+  } else {
+    let best = Infinity;
+    for (const mv of moves) {
+      const nb = board.map(s => [...s.map(p => ({...p}))]);
+      nb[mv.ci].push({ player, sz: mv.sz });
+      const np = {
+        p1: pieces.p1.map((p,i) => player==='p1'&&i===mv.pi ? {...p,used:true} : p),
+        p2: pieces.p2.map((p,i) => player==='p2'&&i===mv.pi ? {...p,used:true} : p),
+      };
+      best = Math.min(best, minimax(nb, np, depth-1, true, alpha, beta));
+      beta = Math.min(beta, best);
+      if (beta <= alpha) break;
+    }
+    return best;
+  }
 }
 
 export function bestMove(difficulty: string, pieces: Record<Player, Piece[]>, board: BoardPiece[][]): CpuMove | null {
   const avail = getAvailMoves('p2', pieces, board);
   if (!avail.length) return null;
-  if (difficulty === 'easy' && Math.random() < 0.45) return avail[Math.floor(Math.random() * avail.length)];
+
+  // やさしい：ランダム多め
+  if (difficulty === 'easy' && Math.random() < 0.5) return avail[Math.floor(Math.random() * avail.length)];
+
+  // 即勝ち
   for (const mv of avail) if (simWin('p2', mv, board)) return mv;
+  // 即負け防ぐ
   for (const mv of avail) if (simBlock(mv, pieces, board)) return mv;
+
   if (difficulty === 'easy') return avail[Math.floor(Math.random() * avail.length)];
-  const pri = [4, 0, 2, 6, 8, 1, 3, 5, 7];
-  for (const ci of pri) {
-    const cands = avail.filter(m => m.ci === ci);
-    if (cands.length) { cands.sort((a, b) => SZ_VAL[a.sz] - SZ_VAL[b.sz]); return cands[0]; }
+
+  // ふつう：1手先読み
+  if (difficulty === 'normal') {
+    const pri = [4, 0, 2, 6, 8, 1, 3, 5, 7];
+    // 2手先の脅威を作る
+    let bestMv = avail[0];
+    let bestScore = -Infinity;
+    for (const mv of avail) {
+      const nb = board.map(s => [...s.map(p => ({...p}))]);
+      nb[mv.ci].push({ player: 'p2', sz: mv.sz });
+      const np = { ...pieces, p2: pieces.p2.map((p,i) => i===mv.pi ? {...p,used:true} : p) };
+      const score = scoreBoard(nb, np);
+      if (score > bestScore) { bestScore = score; bestMv = mv; }
+    }
+    return bestMv;
   }
-  return avail[0];
+
+  // むずかしい：minimax 3手先読み
+  let bestMv = avail[0];
+  let bestScore = -Infinity;
+  for (const mv of avail) {
+    const nb = board.map(s => [...s.map(p => ({...p}))]);
+    nb[mv.ci].push({ player: 'p2', sz: mv.sz });
+    const np = { ...pieces, p2: pieces.p2.map((p,i) => i===mv.pi ? {...p,used:true} : p) };
+    const score = minimax(nb, np, 3, false, -Infinity, Infinity);
+    if (score > bestScore) { bestScore = score; bestMv = mv; }
+  }
+  return bestMv;
 }

@@ -16,7 +16,7 @@ function GamePageInner() {
   const mode = (params.get('mode') ?? 'local') as GameMode;
   const diff = params.get('diff') ?? 'normal';
 
-  const [phase, setPhase] = useState<'attr-p1' | 'attr-p2' | 'game'>('attr-p1');
+  const [phase, setPhase] = useState<'attr-p1' | 'attr-p2' | 'game'>('game');
   const [p1Attr, setP1Attr] = useState<Attribute>('none');
   const [p2Attr, setP2Attr] = useState<Attribute>('none');
 
@@ -28,11 +28,16 @@ function GamePageInner() {
     }
   }, [game.cur, game.winner, game.draw]);
 
-  const startGame = () => {
-    const attrs = { p1: p1Attr, p2: mode === 'cpu' ? (['fire','water','thunder','dark','light'] as Attribute[])[Math.floor(Math.random()*5)] : p2Attr };
+const startGame = () => {
+    const attrs = { p1: 'none' as Attribute, p2: 'none' as Attribute };
     reset(attrs);
     setPhase('game');
   };
+
+  // 初回自動スタート
+  useEffect(() => {
+    startGame();
+  }, []);
 
   const onCell = (ci: number) => {
     if (!sel || busy || game.winner || game.draw) return;
@@ -196,7 +201,7 @@ function GamePageInner() {
         <div className="flex items-center justify-between text-xs font-bold text-gray-400">
           <span>🔢 手数: {moves}</span>
           <button
-            onPointerDown={() => { if (confirm('リセットしますか？')) { setPhase('attr-p1'); setP1Attr('none'); setP2Attr('none'); } }}
+            onPointerDown={() => { if (confirm('リセットしますか？')) { startGame(); } }}
             className="text-xs font-black px-3 py-1.5 rounded-full border-2 border-amber-200 bg-white shadow-[0_2px_0_#DCC89A] active:shadow-none active:translate-y-0.5 transition-all"
           >🔄 リセット</button>
         </div>
@@ -205,7 +210,7 @@ function GamePageInner() {
       {(game.winner || game.draw) && (
         <ResultOverlay
           winner={game.winner} draw={game.draw} mode={mode}
-          onRematch={() => { setPhase('attr-p1'); setP1Attr('none'); setP2Attr('none'); }}
+         onRematch={() => { startGame(); }}
           onTitle={() => router.push('/')}
         />
       )}

@@ -210,7 +210,7 @@ export default function TitlePage() {
               filter:'drop-shadow(3px 3px 0 rgba(0,0,0,0.1))',
             }}
           >
-            なわばり<br/>バトルβテスト)
+            なわばり<br/>バトルβ
           </div>
           <motion.div
             className="mt-2 text-xs font-bold text-gray-400 bg-white px-4 py-1.5 rounded-full border-2 border-amber-200 inline-block shadow-sm"

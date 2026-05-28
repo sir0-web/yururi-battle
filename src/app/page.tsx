@@ -210,14 +210,14 @@ export default function TitlePage() {
               filter:'drop-shadow(3px 3px 0 rgba(0,0,0,0.1))',
             }}
           >
-            ゆるぽり<br/>バトル
+            なわばり<br/>バトルβテスト)
           </div>
           <motion.div
             className="mt-2 text-xs font-bold text-gray-400 bg-white px-4 py-1.5 rounded-full border-2 border-amber-200 inline-block shadow-sm"
             animate={{ scale: [1, 1.04, 1] }}
             transition={{ duration: 2, repeat: Infinity }}
           >
-            🎮 ストラテジーパズル
+            🎮 ストラテジーパズル β版
           </motion.div>
         </motion.div>
 

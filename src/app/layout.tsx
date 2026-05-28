@@ -9,7 +9,7 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: 'ゆるぽりバトル',
+  title: 'なわばりバトル β',
   description: 'シンプルなのに奥深い！3×3ストラテジーパズルゲーム',
 };
 

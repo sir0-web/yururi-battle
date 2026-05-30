@@ -128,8 +128,15 @@ function OnlinePageInner() {
     </div>
   );
 
-  // 属性選択
-  if (phase === 'selecting') return (
+// 属性選択スキップ
+  if (phase === 'selecting') {
+    confirmAttr('none');
+    return (
+      <div className="min-h-screen bg-[#FFF9F0] flex items-center justify-center">
+        <div className="font-black text-gray-400">マッチング中...</div>
+      </div>
+    );
+  }
     <div className="min-h-screen bg-[#FFF9F0] flex flex-col items-center justify-center px-4">
       <motion.div
         className="w-full max-w-sm flex flex-col gap-5"
@@ -198,7 +205,7 @@ function OnlinePageInner() {
         </div>
       </motion.div>
     </div>
-  );
+  
 
   // ゲーム画面
   if ((phase === 'playing' || phase === 'finished') && game) {

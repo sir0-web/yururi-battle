@@ -131,8 +131,13 @@ export default function TitlePage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden"
+    
       style={{background:'linear-gradient(160deg,#FFE5D0 0%,#FFF0E8 40%,#E8F8F7 100%)'}}>
 
+<a href="https://arcana-guild-site.vercel.app/minigame"
+        className="absolute top-3 left-3 z-20 text-xs font-black text-gray-400 bg-white/80 px-2 py-1 rounded-full border border-amber-200 shadow-sm">
+        🏠 TOP
+      </a>
       {/* 背景ブロブ */}
       <motion.div
         className="absolute w-80 h-80 rounded-full opacity-30 blur-3xl"

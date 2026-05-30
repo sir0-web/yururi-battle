@@ -87,9 +87,15 @@ const startGame = () => {
 
         {/* Header */}
         <div className="flex items-center justify-between gap-2">
-          <span className="font-black text-red-400 text-lg" style={{ fontFamily: "'Fredoka One',cursive" }}>
-            🎮 バトル
-          </span>
+          <div className="flex items-center gap-2">
+            <a href="https://arcana-guild-site.vercel.app/minigame"
+              className="text-xs font-black text-gray-400 border border-amber-200 bg-white px-2 py-1 rounded-full shadow-sm">
+              🏠 TOP
+            </a>
+            <span className="font-black text-red-400 text-lg" style={{ fontFamily: "'Fredoka One',cursive" }}>
+              🎮 バトル
+            </span>
+          </div>
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full font-black text-sm ${turnColor}`}>
             <span className={`w-2 h-2 rounded-full animate-pulse ${game.cur === 'p1' ? 'bg-red-400' : 'bg-teal-400'}`} />
             {game.winner || game.draw ? '🏆 終了！' : `${turnName}のターン`}

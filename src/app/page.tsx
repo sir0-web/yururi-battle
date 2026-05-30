@@ -255,8 +255,7 @@ export default function TitlePage() {
 
           {[
             { label: '📖 遊び方', onClick: () => setShowHowto(true), delay: 0.44 },
-            { label: '🏠 Arcanaひろばへ', onClick: () => window.location.href = 'https://arcana-guild-site.vercel.app/minigame', delay: 0.56 },
-          ].map((btn, i) => (
+                    ].map((btn, i) => (
             <motion.button
               key={i}
               initial={{ opacity: 0, y: 20 }}
